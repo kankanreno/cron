@@ -68,6 +68,8 @@ type Entry struct {
 	// WrappedJob is the thing to run when the Schedule is activated.
 	WrappedJob Job
 
+	Tag string
+
 	// Job is the thing that was submitted to cron.
 	// It is kept around so that user code that needs to get at the job later,
 	// e.g. via Entries() can do so.
@@ -143,23 +145,35 @@ func (f FuncJob) Run() { f() }
 // The spec is parsed using the time zone of this Cron instance as the default.
 // An opaque ID is returned that can be used to later remove it.
 func (c *Cron) AddFunc(spec string, cmd func()) (EntryID, error) {
-	return c.AddJob(spec, FuncJob(cmd))
+	return c.AddFuncWithTag(spec, "", cmd)
+}
+
+func (c *Cron) AddFuncWithTag(spec string, tag string, cmd func()) (EntryID, error) {
+	return c.AddJobWithTag(spec, tag, FuncJob(cmd))
 }
 
 // AddJob adds a Job to the Cron to be run on the given schedule.
 // The spec is parsed using the time zone of this Cron instance as the default.
 // An opaque ID is returned that can be used to later remove it.
 func (c *Cron) AddJob(spec string, cmd Job) (EntryID, error) {
+	return c.AddJobWithTag(spec, "", cmd)
+}
+
+func (c *Cron) AddJobWithTag(spec string, tag string, cmd Job) (EntryID, error) {
 	schedule, err := c.parser.Parse(spec)
 	if err != nil {
 		return 0, err
 	}
-	return c.Schedule(schedule, cmd), nil
+	return c.ScheduleWithTag(schedule, tag, cmd), nil
 }
 
 // Schedule adds a Job to the Cron to be run on the given schedule.
 // The job is wrapped with the configured Chain.
 func (c *Cron) Schedule(schedule Schedule, cmd Job) EntryID {
+	return c.ScheduleWithTag(schedule, "", cmd)
+}
+
+func (c *Cron) ScheduleWithTag(schedule Schedule, tag string, cmd Job) EntryID {
 	c.runningMu.Lock()
 	defer c.runningMu.Unlock()
 	c.nextID++
@@ -167,6 +181,7 @@ func (c *Cron) Schedule(schedule Schedule, cmd Job) EntryID {
 		ID:         c.nextID,
 		Schedule:   schedule,
 		WrappedJob: c.chain.Then(cmd),
+		Tag:        tag,
 		Job:        cmd,
 	}
 	if !c.running {
@@ -189,13 +204,13 @@ func (c *Cron) Entries() []Entry {
 	return c.entrySnapshot()
 }
 
-// Location gets the time zone location
-func (c *Cron) Location() *time.Location {
+// GetLocation gets the time zone location
+func (c *Cron) GetLocation() *time.Location {
 	return c.location
 }
 
-// Entry returns a snapshot of the given entry, or nil if it couldn't be found.
-func (c *Cron) Entry(id EntryID) Entry {
+// GetEntry returns a snapshot of the given entry, or nil if it couldn't be found.
+func (c *Cron) GetEntry(id EntryID) Entry {
 	for _, entry := range c.Entries() {
 		if id == entry.ID {
 			return entry
@@ -204,14 +219,31 @@ func (c *Cron) Entry(id EntryID) Entry {
 	return Entry{}
 }
 
-// Remove an entry from being run in the future.
-func (c *Cron) Remove(id EntryID) {
+func (c *Cron) ListEntryByTag(tag string) []Entry {
+	var entries []Entry
+	for _, entry := range c.Entries() {
+		if entry.Tag == tag {
+			entries = append(entries, entry)
+		}
+	}
+	return entries
+}
+
+// RemoveEntry an entry from being run in the future.
+func (c *Cron) RemoveEntry(id EntryID) {
 	c.runningMu.Lock()
 	defer c.runningMu.Unlock()
 	if c.running {
 		c.remove <- id
 	} else {
 		c.removeEntry(id)
+	}
+}
+
+func (c *Cron) RemoveEntriesByTag(tag string) {
+	entries := c.ListEntryByTag(tag)
+	for _, entry := range entries {
+		c.RemoveEntry(entry.ID)
 	}
 }
 

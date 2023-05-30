@@ -169,7 +169,7 @@ func TestRemoveBeforeRunning(t *testing.T) {
 
 	cron := newWithSeconds()
 	id, _ := cron.AddFunc("* * * * * ?", func() { wg.Done() })
-	cron.Remove(id)
+	cron.RemoveEntry(id)
 	cron.Start()
 	defer cron.Stop()
 
@@ -190,7 +190,7 @@ func TestRemoveWhileRunning(t *testing.T) {
 	cron.Start()
 	defer cron.Stop()
 	id, _ := cron.AddFunc("* * * * * ?", func() { wg.Done() })
-	cron.Remove(id)
+	cron.RemoveEntry(id)
 
 	select {
 	case <-time.After(OneSecond):
@@ -239,9 +239,9 @@ func TestMultipleEntries(t *testing.T) {
 	cron.AddFunc("0 0 0 31 12 ?", func() {})
 	cron.AddFunc("* * * * * ?", func() { wg.Done() })
 
-	cron.Remove(id1)
+	cron.RemoveEntry(id1)
 	cron.Start()
-	cron.Remove(id2)
+	cron.RemoveEntry(id2)
 	defer cron.Stop()
 
 	select {
@@ -445,11 +445,11 @@ func TestJob(t *testing.T) {
 	cron.Schedule(Every(5*time.Second+5*time.Nanosecond), testJob{wg, "job4"})
 	job5 := cron.Schedule(Every(5*time.Minute), testJob{wg, "job5"})
 
-	// Test getting an Entry pre-Start.
-	if actualName := cron.Entry(job2).Job.(testJob).name; actualName != "job2" {
+	// Test getting an GetEntry pre-Start.
+	if actualName := cron.GetEntry(job2).Job.(testJob).name; actualName != "job2" {
 		t.Error("wrong job retrieved:", actualName)
 	}
-	if actualName := cron.Entry(job5).Job.(testJob).name; actualName != "job5" {
+	if actualName := cron.GetEntry(job5).Job.(testJob).name; actualName != "job5" {
 		t.Error("wrong job retrieved:", actualName)
 	}
 
@@ -477,10 +477,10 @@ func TestJob(t *testing.T) {
 	}
 
 	// Test getting Entries.
-	if actualName := cron.Entry(job2).Job.(testJob).name; actualName != "job2" {
+	if actualName := cron.GetEntry(job2).Job.(testJob).name; actualName != "job2" {
 		t.Error("wrong job retrieved:", actualName)
 	}
-	if actualName := cron.Entry(job5).Job.(testJob).name; actualName != "job5" {
+	if actualName := cron.GetEntry(job5).Job.(testJob).name; actualName != "job5" {
 		t.Error("wrong job retrieved:", actualName)
 	}
 }
@@ -511,7 +511,7 @@ func TestScheduleAfterRemoval(t *testing.T) {
 			calls++
 		case 1:
 			time.Sleep(750 * time.Millisecond)
-			cron.Remove(hourJob)
+			cron.RemoveEntry(hourJob)
 			calls++
 		case 2:
 			calls++
@@ -703,4 +703,29 @@ func stop(cron *Cron) chan bool {
 // newWithSeconds returns a Cron with the seconds field enabled.
 func newWithSeconds() *Cron {
 	return New(WithParser(secondParser), WithChain())
+}
+
+// Test blocking run method behaves as Start()
+func TestTag(t *testing.T) {
+	c := New(WithSeconds())
+	c.Start()
+
+	c.AddFuncWithTag("*/5 * * * * *", "foo", func() {
+		t.Log("test tag")
+	})
+	c.AddFuncWithTag("*/5 * * * * *", "foo", func() {
+		t.Log("test tag")
+	})
+	c.AddFuncWithTag("*/5 * * * * *", "bar", func() {
+		t.Log("test tag")
+	})
+	t.Logf("[CRON] CRON ENTRY LENGTH: %d, v: %+v ===\n", len(c.Entries()), c.Entries())
+
+	c.RemoveEntriesByTag("foo")
+	fmt.Printf("[CRON] CRON ENTRY LENGTH: %d, v: %+v ===\n", len(c.Entries()), c.Entries())
+
+	c.RemoveEntriesByTag("non-exist")
+	fmt.Printf("[CRON] CRON ENTRY LENGTH: %d, v: %+v ===\n", len(c.Entries()), c.Entries())
+
+	time.Sleep(60 * time.Second)
 }
