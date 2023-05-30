@@ -446,3 +446,12 @@ func TestSlash0NoHang(t *testing.T) {
 		t.Error("expected an error on 0 increment")
 	}
 }
+
+// https://github.com/robfig/cron/issues/144
+func TestBase(t *testing.T) {
+	schedule := "5 * * * *"
+	_, err := ParseStandard(schedule)
+	if err != nil {
+		t.Errorf("err: %s", err.Error())
+	}
+}
