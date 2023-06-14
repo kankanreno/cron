@@ -447,7 +447,7 @@ func TestSlash0NoHang(t *testing.T) {
 	}
 }
 
-// https://github.com/robfig/cron/issues/144
+// test base
 func TestBase(t *testing.T) {
 	schedule := "5 * * * *"
 	_, err := ParseStandard(schedule)
