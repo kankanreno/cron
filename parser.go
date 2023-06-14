@@ -2,7 +2,10 @@ package cron
 
 import (
 	"fmt"
+	"github.com/dablelv/go-huge-util/conv"
+	"github.com/dablelv/go-huge-util/slice"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -32,6 +35,8 @@ const (
 	Month                                  // Month field, default *
 	Dow                                    // Day of week field, default *
 	DowOptional                            // Optional day of week field, default *
+	Year                                   // Year field, default *
+	YearOptional                           // Optional years fiels, default 0
 	Descriptor                             // Allow descriptors such as @monthly, @weekly, etc.
 )
 
@@ -42,6 +47,7 @@ var places = []ParseOption{
 	Dom,
 	Month,
 	Dow,
+	Year,
 }
 
 var defaults = []string{
@@ -51,9 +57,10 @@ var defaults = []string{
 	"*",
 	"*",
 	"*",
+	"*",
 }
 
-//Parser is a custom parser that can be configured.
+// Parser is a custom parser that can be configured.
 type Parser struct {
 	options ParseOption
 }
@@ -83,6 +90,9 @@ func NewParser(options ParseOption) Parser {
 		optionals++
 	}
 	if options&SecondOptional > 0 {
+		optionals++
+	}
+	if options&YearOptional > 0 {
 		optionals++
 	}
 	if optionals > 1 {
@@ -145,6 +155,7 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 		dayofmonth = field(fields[3], dom)
 		month      = field(fields[4], months)
 		dayofweek  = field(fields[5], dow)
+		year       = field(fields[6], years)
 	)
 	if err != nil {
 		return nil, err
@@ -157,6 +168,7 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 		Dom:      dayofmonth,
 		Month:    month,
 		Dow:      dayofweek,
+		Year:     year,
 		Location: loc,
 	}, nil
 }
@@ -167,6 +179,13 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 // As part of performing this function, it also validates that the provided
 // fields are compatible with the configured options.
 func normalizeFields(fields []string, options ParseOption) ([]string, error) {
+	// Preprocess fields of year
+	prunedYearSpec, e := pruneYearSpec(fields[6])
+	if e != nil {
+		return nil, fmt.Errorf("normalizeFields err: %s", e.Error())
+	}
+	fields[6] = prunedYearSpec
+
 	// Validate optionals & add their field to options
 	optionals := 0
 	if options&SecondOptional > 0 {
@@ -175,6 +194,10 @@ func normalizeFields(fields []string, options ParseOption) ([]string, error) {
 	}
 	if options&DowOptional > 0 {
 		options |= Dow
+		optionals++
+	}
+	if options&YearOptional > 0 {
+		options |= Year
 		optionals++
 	}
 	if optionals > 1 {
@@ -202,9 +225,15 @@ func normalizeFields(fields []string, options ParseOption) ([]string, error) {
 	if min < max && len(fields) == min {
 		switch {
 		case options&DowOptional > 0:
-			fields = append(fields, defaults[5]) // TODO: improve access to default
+			if options&Year > 0 {
+				fields = append(fields[:len(fields)-1], defaults[5], fields[len(fields)-1])
+			} else {
+				fields = append(fields, defaults[5]) // TODO: improve access to default
+			}
 		case options&SecondOptional > 0:
 			fields = append([]string{defaults[0]}, fields...)
+		case options&YearOptional > 0:
+			fields = append(fields, defaults[6])
 		default:
 			return nil, fmt.Errorf("unknown optional field")
 		}
@@ -221,6 +250,22 @@ func normalizeFields(fields []string, options ParseOption) ([]string, error) {
 		}
 	}
 	return expandedFields, nil
+}
+
+// 4位及以上数的数字（年份）-2020
+func pruneYearSpec(yearSpec string) (string, error) {
+	reg := regexp.MustCompile("\\d{4,}")
+	strs := reg.FindAllString(yearSpec, -1)
+	fmt.Println("strs: ", strs)
+
+	ints, err := conv.ToIntSliceE(strs)
+	for i := 0; i < len(ints); i++ {
+		ints[i] -= minYear
+	}
+	fmt.Println("ints: ", ints)
+
+	prunedYearSpec, err := slice.JoinWithSepE(ints, ",")
+	return prunedYearSpec, err
 }
 
 var standardParser = NewParser(
@@ -314,7 +359,8 @@ func getRange(expr string, r bounds) (uint64, error) {
 		return 0, fmt.Errorf("beginning of range (%d) below minimum (%d): %s", start, r.min, expr)
 	}
 	if end > r.max {
-		if r.max != 31 && r.max != 6 { // not dom and not dow
+		//return 0, fmt.Errorf("end of range (%d) above maximum (%d): %s", end, r.max, expr)
+		if r.max != 31 && r.max != 6 && r.max != 60 { // not dom and not dow
 			return 0, fmt.Errorf("end of range (%d) above maximum (%d): %s", end, r.max, expr)
 		} else if r.max == 31 && (end > 55 || end < 48) {
 			return 0, fmt.Errorf("end of range (%d) above maximum (%d): %s", end, r.max, expr)
@@ -387,6 +433,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Schedule, error) {
 			Dom:      1 << dom.min,
 			Month:    1 << months.min,
 			Dow:      all(dow),
+			Year:     all(years),
 			Location: loc,
 		}, nil
 
@@ -398,6 +445,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Schedule, error) {
 			Dom:      1 << dom.min,
 			Month:    all(months),
 			Dow:      all(dow),
+			Year:     all(years),
 			Location: loc,
 		}, nil
 
@@ -409,6 +457,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Schedule, error) {
 			Dom:      all(dom),
 			Month:    all(months),
 			Dow:      1 << dow.min,
+			Year:     all(years),
 			Location: loc,
 		}, nil
 
@@ -420,6 +469,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Schedule, error) {
 			Dom:      all(dom),
 			Month:    all(months),
 			Dow:      all(dow),
+			Year:     all(years),
 			Location: loc,
 		}, nil
 
@@ -431,6 +481,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Schedule, error) {
 			Dom:      all(dom),
 			Month:    all(months),
 			Dow:      all(dow),
+			Year:     all(years),
 			Location: loc,
 		}, nil
 

@@ -214,43 +214,55 @@ func TestNormalizeFields(t *testing.T) {
 			"AllFields_NoOptional",
 			[]string{"0", "5", "*", "*", "*", "*"},
 			Second | Minute | Hour | Dom | Month | Dow | Descriptor,
-			[]string{"0", "5", "*", "*", "*", "*"},
+			[]string{"0", "5", "*", "*", "*", "*", "*"},
+		},
+		{
+			"AllQuartzFields_NoOptional",
+			[]string{"1", "1", "1", "1", "1", "1", "2023"},
+			Second | Minute | Hour | Dom | Month | Dow | Year,
+			[]string{"1", "1", "1", "1", "1", "1", "2023"},
+		},
+		{
+			"AllQuartzFields_YearOptional",
+			[]string{"1", "1", "1", "1", "1", "1"},
+			Second | Minute | Hour | Dom | Month | Dow | YearOptional,
+			[]string{"1", "1", "1", "1", "1", "1", "*"},
 		},
 		{
 			"AllFields_SecondOptional_Provided",
 			[]string{"0", "5", "*", "*", "*", "*"},
 			SecondOptional | Minute | Hour | Dom | Month | Dow | Descriptor,
-			[]string{"0", "5", "*", "*", "*", "*"},
+			[]string{"0", "5", "*", "*", "*", "*", "*"},
 		},
 		{
 			"AllFields_SecondOptional_NotProvided",
 			[]string{"5", "*", "*", "*", "*"},
 			SecondOptional | Minute | Hour | Dom | Month | Dow | Descriptor,
-			[]string{"0", "5", "*", "*", "*", "*"},
+			[]string{"0", "5", "*", "*", "*", "*", "*"},
 		},
 		{
 			"SubsetFields_NoOptional",
 			[]string{"5", "15", "*"},
 			Hour | Dom | Month,
-			[]string{"0", "0", "5", "15", "*", "*"},
+			[]string{"0", "0", "5", "15", "*", "*", "*"},
 		},
 		{
 			"SubsetFields_DowOptional_Provided",
 			[]string{"5", "15", "*", "4"},
 			Hour | Dom | Month | DowOptional,
-			[]string{"0", "0", "5", "15", "*", "4"},
+			[]string{"0", "0", "5", "15", "*", "4", "*"},
 		},
 		{
 			"SubsetFields_DowOptional_NotProvided",
 			[]string{"5", "15", "*"},
 			Hour | Dom | Month | DowOptional,
-			[]string{"0", "0", "5", "15", "*", "*"},
+			[]string{"0", "0", "5", "15", "*", "*", "*"},
 		},
 		{
 			"SubsetFields_SecondOptional_NotProvided",
 			[]string{"5", "15", "*"},
 			SecondOptional | Hour | Dom | Month,
-			[]string{"0", "0", "5", "15", "*", "*"},
+			[]string{"0", "0", "5", "15", "*", "*", "*"},
 		},
 	}
 
@@ -320,7 +332,7 @@ func TestStandardSpecSchedule(t *testing.T) {
 	}{
 		{
 			expr:     "5 * * * *",
-			expected: &SpecSchedule{1 << seconds.min, 1 << 5, all(hours), all(dom), all(months), all(dow), time.Local},
+			expected: &SpecSchedule{1 << seconds.min, 1 << 5, all(hours), all(dom), all(months), all(dow), all(years), time.Local},
 		},
 		{
 			expr:     "@every 5m",
@@ -359,15 +371,15 @@ func TestNoDescriptorParser(t *testing.T) {
 }
 
 func every5min(loc *time.Location) *SpecSchedule {
-	return &SpecSchedule{1 << 0, 1 << 5, all(hours), all(dom), all(months), all(dow), loc}
+	return &SpecSchedule{1 << 0, 1 << 5, all(hours), all(dom), all(months), all(dow), all(years), loc}
 }
 
 func every5min5s(loc *time.Location) *SpecSchedule {
-	return &SpecSchedule{1 << 5, 1 << 5, all(hours), all(dom), all(months), all(dow), loc}
+	return &SpecSchedule{1 << 5, 1 << 5, all(hours), all(dom), all(months), all(dow), all(years), loc}
 }
 
 func midnight(loc *time.Location) *SpecSchedule {
-	return &SpecSchedule{1, 1, 1, all(dom), all(months), all(dow), loc}
+	return &SpecSchedule{1, 1, 1, all(dom), all(months), all(dow), all(years), loc}
 }
 
 func annual(loc *time.Location) *SpecSchedule {
@@ -378,6 +390,7 @@ func annual(loc *time.Location) *SpecSchedule {
 		Dom:      1 << dom.min,
 		Month:    1 << months.min,
 		Dow:      all(dow),
+		Year:     all(years),
 		Location: loc,
 	}
 }

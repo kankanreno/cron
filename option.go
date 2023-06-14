@@ -18,7 +18,7 @@ func WithLocation(loc *time.Location) Option {
 // include a seconds field as the first one.
 func WithSeconds() Option {
 	return WithParser(NewParser(
-		Second | Minute | Hour | Dom | Month | Dow | Descriptor,
+		Second | Minute | Hour | Dom | Month | Dow | Year | Descriptor,
 	))
 }
 
