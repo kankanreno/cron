@@ -734,10 +734,13 @@ func TestYear(t *testing.T) {
 	//c.AddFuncWithTag("@every 5h", "foo", func() {
 	//	t.Log("test tag")
 	//})
-	c.AddFuncWithTag("5 4 3 2l 1 * 2022,2034", "foo", func() {
+	//c.AddFuncWithTag("5 4 3 2l 1 * 2022,2034", "foo", func() {
+	//	t.Log("test tag")
+	//})
+	c.AddFuncWithTag("*/2 * * * * * *", "foo", func() {
 		t.Log("test tag")
 	})
 	t.Logf("[CRON] CRON ENTRY LENGTH: %d, v: %+v\n", len(c.Entries()), c.Entries())
 
-	//time.Sleep(10 * time.Second)
+	time.Sleep(10 * time.Second)
 }

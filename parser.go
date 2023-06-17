@@ -184,7 +184,9 @@ func normalizeFields(fields []string, options ParseOption) ([]string, error) {
 	if e != nil {
 		return nil, fmt.Errorf("normalizeFields err: %s", e.Error())
 	}
-	fields[6] = prunedYearSpec
+	if prunedYearSpec != "" {
+		fields[6] = prunedYearSpec
+	}
 
 	// Validate optionals & add their field to options
 	optionals := 0
@@ -255,16 +257,14 @@ func normalizeFields(fields []string, options ParseOption) ([]string, error) {
 // 4位及以上数的数字（年份）-2020
 func pruneYearSpec(yearSpec string) (string, error) {
 	reg := regexp.MustCompile("\\d{4,}")
-	strs := reg.FindAllString(yearSpec, -1)
-	fmt.Println("strs: ", strs)
+	yearSpecStrs := reg.FindAllString(yearSpec, -1)
 
-	ints, err := conv.ToIntSliceE(strs)
-	for i := 0; i < len(ints); i++ {
-		ints[i] -= minYear
+	yearSpecInts, err := conv.ToIntSliceE(yearSpecStrs)
+	for i := 0; i < len(yearSpecInts); i++ {
+		yearSpecInts[i] -= minYear
 	}
-	fmt.Println("ints: ", ints)
 
-	prunedYearSpec, err := slice.JoinWithSepE(ints, ",")
+	prunedYearSpec, err := slice.JoinWithSepE(yearSpecInts, ",")
 	return prunedYearSpec, err
 }
 
