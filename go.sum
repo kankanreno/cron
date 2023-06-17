@@ -1,0 +1,4 @@
+github.com/dablelv/go-huge-util v0.0.44 h1:h8XDNFtl7waDFBrZt5Uf+dQ7fbdxu9NCw54cMamnBDM=
+github.com/dablelv/go-huge-util v0.0.44/go.mod h1:vPLtz7PQSbpsRP3K+uu8w0YwpSFte3EV2PqWaPw6KY4=
+golang.org/x/exp v0.0.0-20221229233502-02c3fc3b3eb4 h1:FJ366zx98Mq6JL8dYkXwSHeGwc2wM9NsxFerYtY70rY=
+golang.org/x/exp v0.0.0-20221229233502-02c3fc3b3eb4/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=

@@ -541,10 +541,6 @@ func (*ZeroSchedule) Next(time.Time) time.Time {
 	return time.Time{}
 }
 
-func (*ZeroSchedule) Prev(time.Time) time.Time {
-	return time.Time{}
-}
-
 // Tests that job without time does not run
 func TestJobWithZeroTimeDoesNotRun(t *testing.T) {
 	cron := newWithSeconds()
@@ -719,13 +715,29 @@ func TestTag(t *testing.T) {
 	c.AddFuncWithTag("*/5 * * * * *", "bar", func() {
 		t.Log("test tag")
 	})
-	t.Logf("[CRON] CRON ENTRY LENGTH: %d, v: %+v ===\n", len(c.Entries()), c.Entries())
+	t.Logf("[CRON] CRON ENTRY LENGTH: %d, v: %+v\n", len(c.Entries()), c.Entries())
 
 	c.RemoveEntriesByTag("foo")
-	fmt.Printf("[CRON] CRON ENTRY LENGTH: %d, v: %+v ===\n", len(c.Entries()), c.Entries())
+	t.Logf("[CRON] CRON ENTRY LENGTH: %d, v: %+v\n", len(c.Entries()), c.Entries())
 
 	c.RemoveEntriesByTag("non-exist")
-	fmt.Printf("[CRON] CRON ENTRY LENGTH: %d, v: %+v ===\n", len(c.Entries()), c.Entries())
+	t.Logf("[CRON] CRON ENTRY LENGTH: %d, v: %+v\n", len(c.Entries()), c.Entries())
 
 	time.Sleep(60 * time.Second)
+}
+
+// Test blocking run method behaves as Start()
+func TestYear(t *testing.T) {
+	c := New(WithSeconds())
+	c.Start()
+
+	//c.AddFuncWithTag("@every 5h", "foo", func() {
+	//	t.Log("test tag")
+	//})
+	c.AddFuncWithTag("5 4 3 2l 1 * 2022,2034", "foo", func() {
+		t.Log("test tag")
+	})
+	t.Logf("[CRON] CRON ENTRY LENGTH: %d, v: %+v\n", len(c.Entries()), c.Entries())
+
+	//time.Sleep(10 * time.Second)
 }
